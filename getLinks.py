@@ -5,9 +5,11 @@ import pandas as pd
 from pymongo import MongoClient
 from random import randint
 from time import sleep
+from dotenv import load_dotenv
 
 
 def main():
+    load_dotenv()
     token = os.getenv("TOKEN")
     # collections with 1998 registers need to collect more data
     count = 999
