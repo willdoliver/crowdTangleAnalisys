@@ -13,14 +13,10 @@ from datetime import timedelta
 
 def main():
     load_dotenv()
-    # test date ranges, 3 days until half a day
-    startDate = datetime(2017, 5, 24, 23, 00, 00)
-    endDate = datetime(2017, 5, 21, 23, 59, 59)
-    startDate, endDate = calculateInterval(startDate, endDate)
-    exit(0)
+
     parser = argparse.ArgumentParser(description='Description of the script')
     parser.add_argument('-mode','--mode', help='insert or update database', required=True)
-    parser.add_argument('-collection','--collection', help='all or collection_n', required=True)
+    parser.add_argument('-collection','--collection', help='[all/collection_n]', required=True)
     args = vars(parser.parse_args())
 
     mode = args['mode']
@@ -39,6 +35,25 @@ def main():
 
         urlLink = treatLinkToSearch(row['retweeted_url'])
         
+        maxEmptyResults = 3
+        
+        if mode == 'update':
+            endDate = findOldestDate(row['collection_name'])
+            if endDate is None:
+                mode = 'insert'
+                pass
+
+            startDate, endDate = calculateInterval(None, endDate)
+            posts = getDatedResponse(startDate, endDate, urlLink, mode)
+
+            qtd_posts = len(posts)
+            print("Posts Collected: "+str(qtd_posts))
+
+            if qtd_posts == 1000:
+                startDate, endDate = calculateInterval(None, endDate)
+                posts += getDatedResponse(startDate, endDate, urlLink, mode)
+
+
         if mode == 'insert':
             posts = getInitialRequest(urlLink)
             qtd_posts = len(posts)
@@ -48,22 +63,48 @@ def main():
                 # search by date parts
                 endDate = posts[0]["date"].split(" ")[0] + " 23:59:59"
                 startDate = posts[0]["date"].split(" ")[0] + " 00:00:00"
-                getDatedResponse(startDate, endDate, urlLink, mode)
-            else:
-                #insert in database
-                print("Inserting %s Documents" % (len(posts)))
-                insertDocuments(row['collection_name'], posts, mode)
-        
-        if mode == 'update':
-            endDate = findOldestDate(row['collection_name'])
-            print(endDate)
+                posts = getDatedResponse(startDate, endDate, urlLink, mode)
 
-            startDate, endDate = calculateInterval(startDate, endDate)
+        # loop
+        emptyLoop = 0
+        while True:
+            qtd_posts = len(posts)
+
+            if qtd_posts == 1000:
+                startDate, endDate = calculateInterval(None, endDate)
+                posts = getDatedResponse(startDate, endDate, urlLink, mode)
+
+            if qtd_posts == 0:
+                emptyLoop+=1
+
+                if emptyLoop >= maxEmptyResults:
+                    break
+
+        #insert in database
+        print("Inserting %s Documents" % (len(posts)))
+        insertDocuments(row['collection_name'], posts, mode)
+        
+        
+
+
+
 
 def calculateInterval(startDate, endDate):
-    # 3 days default until 12/6 hours
-    interval = endDate - startDate
-    print("Interval:" + str(interval))
+    if startDate is None:
+        interval = timedelta(days=1)
+    else:
+        interval = endDate - startDate
+
+    minInterval = timedelta(hours=1, minutes=00, seconds=00)
+    if interval < minInterval:
+        print("Min interval accepted reached")
+        exit(0)
+
+    startDate = startDate + (interval/2)
+    print("Interval before: " + str(interval))
+    print("Interval after: " + str(interval/2))
+    print(startDate)
+    print(endDate)
 
     return startDate, endDate
 
@@ -134,13 +175,16 @@ def findOldestDate(collectionName):
     collection = mongodbConnection(collectionName)
     count = collection.count_documents({})
 
-    if count > 0:
-        oldest = collection.find().sort("date",1).limit(1)
-        for old in oldest:
-            return old['date']
-    else:
-        print('Oldest date not found for collection: ' + collectionName )
-        exit(0)
+    try:
+        if count > 0:
+            oldest = collection.find().sort("date",1).limit(1)
+            for old in oldest:
+                return datetime.strptime(old['date'], '%Y-%m-%d %H:%M:%S')
+        else:
+            return None
+    except Exception as e:
+        print("Oldest date not found for collection")
+        return None
 
 
 def insertDocuments(collectionName, items, action="insert"): # array of jsons [{},{}]
