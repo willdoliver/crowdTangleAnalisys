@@ -34,27 +34,21 @@ def main():
         # print("URL Not formatted: "+ str(row['retweeted_url']))
 
         urlLink = treatLinkToSearch(row['retweeted_url'])
-        
+
         maxEmptyResults = 3
         
         if mode == 'update':
+            print("Update mode")
             endDate = findOldestDate(row['collection_name'])
             if endDate is None:
+                print("Old register not found for collection, changing to insert...")
                 mode = 'insert'
-                pass
-
-            startDate, endDate = calculateInterval(None, endDate)
-            posts = getDatedResponse(startDate, endDate, urlLink, mode)
-
-            qtd_posts = len(posts)
-            print("Posts Collected: "+str(qtd_posts))
-
-            if qtd_posts == 1000:
-                startDate, endDate = calculateInterval(None, endDate)
-                posts += getDatedResponse(startDate, endDate, urlLink, mode)
-
+            else:
+                startDate = endDate - timedelta(days=2)
+                startDate, endDate = calculateInterval(startDate, endDate)
 
         if mode == 'insert':
+            print("Insert mode")
             posts = getInitialRequest(urlLink)
             qtd_posts = len(posts)
             print("Posts Collected: "+str(qtd_posts))
@@ -63,26 +57,41 @@ def main():
                 # search by date parts
                 endDate = posts[0]["date"].split(" ")[0] + " 23:59:59"
                 startDate = posts[0]["date"].split(" ")[0] + " 00:00:00"
-                posts = getDatedResponse(startDate, endDate, urlLink, mode)
+                # format string to datetime
+                endDate = datetime.strptime(endDate, '%Y-%m-%d %H:%M:%S')
+                startDate = datetime.strptime(startDate, '%Y-%m-%d %H:%M:%S')
+            else:
+                print("Inserting %s Documents" % (len(posts)))
+                insertDocuments(row['collection_name'], posts, mode)
+                continue
 
-        # loop
+        # loop througth dated responses
         emptyLoop = 0
         while True:
+            print("\n\n")
+            startDate, endDate = calculateInterval(startDate, endDate)
+            posts = getDatedResponse(startDate, endDate, urlLink)
             qtd_posts = len(posts)
 
             if qtd_posts == 1000:
-                startDate, endDate = calculateInterval(None, endDate)
-                posts = getDatedResponse(startDate, endDate, urlLink, mode)
+                print("qtd_posts=1000 splitting data")
+                continue
+            elif qtd_posts > 0 and qtd_posts < 1000:
+                endDate = startDate
+                startDate = endDate - timedelta(days=6)
+            elif qtd_posts == 0:
+                endDate = startDate
+                startDate = endDate - timedelta(days=6)
 
-            if qtd_posts == 0:
                 emptyLoop+=1
 
                 if emptyLoop >= maxEmptyResults:
                     break
 
-        #insert in database
-        print("Inserting %s Documents" % (len(posts)))
-        insertDocuments(row['collection_name'], posts, mode)
+            if qtd_posts > 0:
+                #insert in database
+                print("Inserting %s Documents" % (len(posts)))
+                insertDocuments(row['collection_name'], posts, mode)
         
         
 
@@ -90,10 +99,7 @@ def main():
 
 
 def calculateInterval(startDate, endDate):
-    if startDate is None:
-        interval = timedelta(days=1)
-    else:
-        interval = endDate - startDate
+    interval = endDate - startDate
 
     minInterval = timedelta(hours=1, minutes=00, seconds=00)
     if interval < minInterval:
@@ -101,14 +107,18 @@ def calculateInterval(startDate, endDate):
         exit(0)
 
     startDate = startDate + (interval/2)
-    print("Interval before: " + str(interval))
-    print("Interval after: " + str(interval/2))
+    # print("Interval before: " + str(interval))
+    # print("Interval after: " + str(interval/2))
+    # Remove milliseconds
+    startDate = startDate.replace(microsecond=0)
+    endDate = endDate.replace(microsecond=0)
     print(startDate)
     print(endDate)
 
     return startDate, endDate
 
-def getDatedResponse(startDate, endDate, link, mode):
+
+def getDatedResponse(startDate, endDate, link):
     url = "https://api.crowdtangle.com/links?token=%s&count=%s&link=%s&endDate=%s&startDate=%s" % (os.getenv('TOKEN'), 1000, link, endDate, startDate)
     print("URL:" + str(url))
 
@@ -116,6 +126,7 @@ def getDatedResponse(startDate, endDate, link, mode):
     headers = {}
 
     try:
+        freeze()
         response = requests.request("GET", url, headers=headers, data=payload)
         if (response.status_code == 200):
             response = response.json()
@@ -150,8 +161,10 @@ def treatLinkToSearch(link):
     else:
         urlLink = urlLink.group(0).replace("&","")
 
+    return urlLink
+
+
 def freeze():
-    # sleepTime = randint(30,34)
     print("sleep:"+str(31))
     sleep(31)
 
@@ -162,7 +175,7 @@ def mongodbConnection(collectionName):
         exit(666)
 
     client = MongoClient('mongodb://localhost:27017/')
-    db = client.config
+    db = client.crowdtangle
     return db[collectionName]
 
 
