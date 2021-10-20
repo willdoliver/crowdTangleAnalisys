@@ -23,13 +23,19 @@ def main():
     collection = args['collection']
 
     # Links to search
-    df = pd.read_csv('URLs/retweeted_urls_rph_BRA.csv',nrows=5)
+    df = pd.read_csv('URLs/retweeted_urls_rph_BRA.csv',nrows=2500)
     # print(df.head())
 
     if collection != 'all':
         df = df[df['collection_name'] == collection]
 
+    collectionsDone = []
+
     for index,row in df.iterrows():
+        if (row['collection_name'] in collectionsDone):
+            print("Skipped collection: " + str(row['collection_name']))
+            continue
+
         print("\nCollectionName: "+ str(row['collection_name']))
         # print("URL Not formatted: "+ str(row['retweeted_url']))
 
@@ -61,14 +67,19 @@ def main():
                 endDate = datetime.strptime(endDate, '%Y-%m-%d %H:%M:%S')
                 startDate = datetime.strptime(startDate, '%Y-%m-%d %H:%M:%S')
             else:
+                if qtd_posts == 0:
+                    print(row['collection_name']+": with 0 Documents")
+                    continue
                 print("Inserting %s Documents" % (len(posts)))
                 insertDocuments(row['collection_name'], posts, mode)
                 continue
 
         # loop througth dated responses
         emptyLoop = 0
+        mode = 'update'
+
         while True:
-            print("\n\n")
+            print("\n")
             startDate, endDate = calculateInterval(startDate, endDate)
             posts = getDatedResponse(startDate, endDate, urlLink)
             qtd_posts = len(posts)
@@ -92,10 +103,6 @@ def main():
                 #insert in database
                 print("Inserting %s Documents" % (len(posts)))
                 insertDocuments(row['collection_name'], posts, mode)
-        
-        
-
-
 
 
 def calculateInterval(startDate, endDate):
@@ -145,6 +152,7 @@ def getInitialRequest(link):
     headers = {}
 
     try:
+        freeze()
         response = requests.request("GET", url, headers=headers, data=payload)
         if (response.status_code == 200):
             response = response.json()
