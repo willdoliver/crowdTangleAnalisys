@@ -8,21 +8,21 @@ from nltk.stem import PorterStemmer
 from nltk import pos_tag
 
 # @TODO:
+# Mount graph, using account's and news links as nodes and edges
 # Clusterizar titles e descriptions
 # Normalizar valores de reactions/likes de acordo com as collections
 # Analisar PageCategory dos registros de circulação de notícias
 
 def main():
-    df = pd.read_csv('URLs/retweeted_urls_rph_BRA.csv',nrows=5)
+    # collection_name,retweeted_url,RP(H),retweets_count
+    dfCsv = pd.read_csv('URLs/retweeted_urls_test.csv',nrows=50)
 
     fieldsToCollect = [
-        "_id",
-        # "platform",
-        "postUrl",
-        "title",
-        "description",
+        # "_id",
+        "platform",
+        "type",
+        "subscriberCount",
         "score",
-        # "postUrl",
         "statistics.actual.likeCount",
         "statistics.actual.shareCount",
         "statistics.actual.commentCount",
@@ -43,24 +43,39 @@ def main():
         "statistics.expected.angryCount",
         "statistics.expected.thankfulCount",
         "statistics.expected.careCount",
-        "account.pageCategory"
+        "account.id",
+        "account.name",
+        "account.subscriberCount",
+        "account.accountType",
     ]
 
-    for index,row in df.iterrows():
+    dfGraph = pd.DataFrame()
+
+    for index,row in dfCsv.iterrows():
+        graphData = {}
         print("\nCollectionName: "+ str(row['collection_name']))
+        
+        graphData['collectionName']   = row['collection_name']
+        graphData['link']             = row['retweeted_url']
+        graphData['rph']              = row['RP(H)']
+        graphData['retweetsCount']    = row['retweets_count']
+
         news = getDocuments(row['collection_name'])
+        dfDB = pd.json_normalize(list(news))
+        dfDB = dfDB[fieldsToCollect]
 
-        df = pd.json_normalize(list(news))
-        df = df[fieldsToCollect]
+        print("Calculating fields for: " + row['collection_name'])
+        statisticsCalculate(dfDB, graphData)
 
-        # meanCalculate(df, row["retweeted_url"])
-        textTreatment(df)
-
+        dfGraph = dfGraph.append(graphData, ignore_index = True)
+    
+        # textTreatment(df)
         # normalized values
         # df["minmax_norm"] = minmax_norm(df["statistics.actual.likeCount"])
-        # pp.pprint(df)
-        # df.to_csv("collections/%s_normalized.csv" % (row['collection_name']), index=False)
-        exit(0)
+
+    dfGraph.to_csv("collections/graph.csv", index=False)
+    print(dfGraph)
+
 
 def textTreatment(df):
     dfTitle = df.groupby(["title"])["title"].count()
@@ -101,55 +116,70 @@ def textTreatment(df):
     print(tagged)
 
 
-def meanCalculate(df, retweeted_url):
-    meanScore           = round(df["score"].mean(),2)
-    meanActualLike      = round(df["statistics.actual.likeCount"].mean(),2)
-    meanExpectedLike    = round(df["statistics.expected.likeCount"].mean(),2)
-    meanActualShare     = round(df["statistics.actual.shareCount"].mean(),2)
-    meanExpectedShare   = round(df["statistics.expected.shareCount"].mean(),2)
-    meanActualComment   = round(df["statistics.actual.commentCount"].mean(),2)
-    meanExpectedComment = round(df["statistics.expected.commentCount"].mean(),2)
+
+def statisticsCalculate(df, data):
+    # General data
+    data['itemsCount']                     = len(df)
+    data['platform']                       = dict(df.groupby(["platform"])["platform"].count())
+    data['type']                           = dict(df.groupby(["type"])["type"].count())
+    data['accountType']                    = dict(df.groupby(["account.accountType"])["account.accountType"].count())
+    data['meanPostSubscriberCount']        = round(df["subscriberCount"].mean(),2)
+    data['medianPostSubscriberCount']      = round(df["subscriberCount"].median(),2)
+    data['meanAccountSubscriberCount']     = round(df['account.subscriberCount'].mean(),2)
+    data['medianAccountSubscriberCount']   = round(df['account.subscriberCount'].median(),2)
+    # Likes count
+    data['meanScore']           = round(df["score"].mean(),2)
+    data['medianScore']         = round(df['score'].median(),2)
+    data['meanActualLike']      = round(df["statistics.actual.likeCount"].mean(),2)
+    data['meanExpectedLike']    = round(df["statistics.expected.likeCount"].mean(),2)
+    data['meanActualShare']     = round(df["statistics.actual.shareCount"].mean(),2)
+    data['meanExpectedShare']   = round(df["statistics.expected.shareCount"].mean(),2)
+    data['meanActualComment']   = round(df["statistics.actual.commentCount"].mean(),2)
+    data['meanExpectedComment'] = round(df["statistics.expected.commentCount"].mean(),2)
     # Reactions
-    meanActualLove          = round(df["statistics.actual.loveCount"].mean(),2)
-    meanExpectedLove        = round(df["statistics.expected.loveCount"].mean(),2)
-    meanActualWow           = round(df["statistics.actual.wowCount"].mean(),2)
-    meanExpectedWow         = round(df["statistics.expected.wowCount"].mean(),2)
-    meanActualHaha          = round(df["statistics.actual.hahaCount"].mean(),2)
-    meanExpectedHaha        = round(df["statistics.expected.hahaCount"].mean(),2)
-    meanActualSad           = round(df["statistics.actual.sadCount"].mean(),2)
-    meanExpectedSad         = round(df["statistics.expected.sadCount"].mean(),2)
-    meanActualAngry         = round(df["statistics.actual.angryCount"].mean(),2)
-    meanExpectedAngry       = round(df["statistics.expected.angryCount"].mean(),2)
-    meanActualThankful      = round(df["statistics.actual.thankfulCount"].mean(),2)
-    meanExpectedThankful    = round(df["statistics.expected.thankfulCount"].mean(),2)
-    meanActualCare          = round(df["statistics.actual.careCount"].mean(),2)
-    meanExpectedCare        = round(df["statistics.expected.careCount"].mean(),2)
+    data['meanActualLove']          = round(df["statistics.actual.loveCount"].mean(),2)
+    data['meanExpectedLove']        = round(df["statistics.expected.loveCount"].mean(),2)
+    data['meanActualWow']           = round(df["statistics.actual.wowCount"].mean(),2)
+    data['meanExpectedWow']         = round(df["statistics.expected.wowCount"].mean(),2)
+    data['meanActualHaha']          = round(df["statistics.actual.hahaCount"].mean(),2)
+    data['meanExpectedHaha']        = round(df["statistics.expected.hahaCount"].mean(),2)
+    data['meanActualSad']           = round(df["statistics.actual.sadCount"].mean(),2)
+    data['meanExpectedSad']         = round(df["statistics.expected.sadCount"].mean(),2)
+    data['meanActualAngry']         = round(df["statistics.actual.angryCount"].mean(),2)
+    data['meanExpectedAngry']       = round(df["statistics.expected.angryCount"].mean(),2)
+    data['meanActualThankful']      = round(df["statistics.actual.thankfulCount"].mean(),2)
+    data['meanExpectedThankful']    = round(df["statistics.expected.thankfulCount"].mean(),2)
+    data['meanActualCare']          = round(df["statistics.actual.careCount"].mean(),2)
+    data['meanExpectedCare']        = round(df["statistics.expected.careCount"].mean(),2)
 
     pp.pprint("Count: %s" % (df.shape[0]))
-    pp.pprint("Retweeted Url: %s" % (retweeted_url))
+
+    pp.pprint()
+
+
     pp.pprint("Means:")
-    pp.pprint("Score: %s" % (meanScore))
-    pp.pprint("Actual Like: %s" % (meanActualLike))
-    pp.pprint("Expected Like: %s" % (meanExpectedLike))
-    pp.pprint("Actual Share: %s" % (meanActualShare))
-    pp.pprint("Expected Share: %s" % (meanExpectedShare))
-    pp.pprint("Actual Comments: %s" % (meanActualComment))
-    pp.pprint("Expected Comments: %s" % (meanExpectedComment))
+    pp.pprint("Score: %s" % (data['meanScore']))
+    pp.pprint("Actual Like: %s" % (data['meanActualLike']))
+    pp.pprint("Expected Like: %s" % (data['meanExpectedLike']))
+    pp.pprint("Actual Share: %s" % (data['meanActualShare']))
+    pp.pprint("Expected Share: %s" % (data['meanExpectedShare']))
+    pp.pprint("Actual Comments: %s" % (data['meanActualComment']))
+    pp.pprint("Expected Comments: %s" % (data['meanExpectedComment']))
     # Reactions
-    pp.pprint("Actual Love: %s" % (meanActualLove))
-    pp.pprint("Expected Love: %s" % (meanExpectedLove))
-    pp.pprint("Actual Wow: %s" % (meanActualWow))
-    pp.pprint("Expected Wow: %s" % (meanExpectedWow))
-    pp.pprint("Actual Haha: %s" % (meanActualHaha))
-    pp.pprint("Expected Haha: %s" % (meanExpectedHaha))
-    pp.pprint("Actual Sad: %s" % (meanActualSad))
-    pp.pprint("Expected Sad: %s" % (meanExpectedSad))
-    pp.pprint("Actual Angry: %s" % (meanActualAngry))
-    pp.pprint("Expected Angry: %s" % (meanExpectedAngry))
-    pp.pprint("Actual Thankful: %s" % (meanActualThankful))
-    pp.pprint("Expected Thankful: %s" % (meanExpectedThankful))
-    pp.pprint("Actual Care: %s" % (meanActualCare))
-    pp.pprint("Expected Care: %s" % (meanExpectedCare))
+    pp.pprint("Actual Love: %s" % (data['meanActualLove']))
+    pp.pprint("Expected Love: %s" % (data['meanExpectedLove']))
+    pp.pprint("Actual Wow: %s" % (data['meanActualWow']))
+    pp.pprint("Expected Wow: %s" % (data['meanExpectedWow']))
+    pp.pprint("Actual Haha: %s" % (data['meanActualHaha']))
+    pp.pprint("Expected Haha: %s" % (data['meanExpectedHaha']))
+    pp.pprint("Actual Sad: %s" % (data['meanActualSad']))
+    pp.pprint("Expected Sad: %s" % (data['meanExpectedSad']))
+    pp.pprint("Actual Angry: %s" % (data['meanActualAngry']))
+    pp.pprint("Expected Angry: %s" % (data['meanExpectedAngry']))
+    pp.pprint("Actual Thankful: %s" % (data['meanActualThankful']))
+    pp.pprint("Expected Thankful: %s" % (data['meanExpectedThankful']))
+    pp.pprint("Actual Care: %s" % (data['meanActualCare']))
+    pp.pprint("Expected Care: %s" % (data['meanExpectedCare']))
 
 
 def minmax_norm(df_input):
@@ -163,11 +193,12 @@ def mongodbConnection(collectionName):
         exit(0)
 
     client = MongoClient('mongodb://localhost:27017/')
-    db = client.config
+    db = client.crowdtangle
     return db[collectionName]
 
 
 def getDocuments(collectionName): # array of jsons [{},{}]
+    pp.pprint("Getting documents from: " + collectionName)
     collection = mongodbConnection(collectionName)
 
     # https://pymongo.readthedocs.io/en/stable/tutorial.html
