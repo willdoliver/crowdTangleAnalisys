@@ -2,79 +2,72 @@ import pandas as pd
 from pandas.core.frame import DataFrame
 from pymongo import MongoClient
 import pprint as pp
+import networkx as nx
 from nltk import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from nltk import pos_tag
 
-# @TODO:
-# Mount graph, using account's and news links as nodes and edges
-# Clusterizar titles e descriptions
-# Normalizar valores de reactions/likes de acordo com as collections
-# Analisar PageCategory dos registros de circulação de notícias
+# @TODO
+# separate nodes in clusters, platform, type, meanRange
+# normalize edge values
+# insert more fields
 
 def main():
     # collection_name,retweeted_url,RP(H),retweets_count
     dfCsv = pd.read_csv('URLs/retweeted_urls_test.csv',nrows=50)
 
-    fieldsToCollect = [
-        # "_id",
-        "platform",
-        "type",
-        "subscriberCount",
-        "score",
-        "statistics.actual.likeCount",
-        "statistics.actual.shareCount",
-        "statistics.actual.commentCount",
-        "statistics.actual.loveCount",
-        "statistics.actual.wowCount",
-        "statistics.actual.hahaCount",
-        "statistics.actual.sadCount",
-        "statistics.actual.angryCount",
-        "statistics.actual.thankfulCount",
-        "statistics.actual.careCount",
-        "statistics.expected.likeCount",
-        "statistics.expected.shareCount",
-        "statistics.expected.commentCount",
-        "statistics.expected.loveCount",
-        "statistics.expected.wowCount",
-        "statistics.expected.hahaCount",
-        "statistics.expected.sadCount",
-        "statistics.expected.angryCount",
-        "statistics.expected.thankfulCount",
-        "statistics.expected.careCount",
-        "account.id",
-        "account.name",
-        "account.subscriberCount",
-        "account.accountType",
-    ]
+    G=nx.Graph()
+    collectionsDone = []
+    collectionsEmpty = []
+    accounts = {}
 
-    dfGraph = pd.DataFrame()
-
+    # Nodes creation and their attributes
     for index,row in dfCsv.iterrows():
-        graphData = {}
-        print("\nCollectionName: "+ str(row['collection_name']))
-        
-        graphData['collectionName']   = row['collection_name']
-        graphData['link']             = row['retweeted_url']
-        graphData['rph']              = row['RP(H)']
-        graphData['retweetsCount']    = row['retweets_count']
+        # graphData = {}
+        collectionName = row['collection_name'].replace("_","")
+        print("\nCollectionName: "+ str(collectionName))
 
-        news = getDocuments(row['collection_name'])
-        dfDB = pd.json_normalize(list(news))
-        dfDB = dfDB[fieldsToCollect]
+        documents = getDocuments(row['collection_name'])
+        dfDocuments = pd.json_normalize(list(documents))
 
-        print("Calculating fields for: " + row['collection_name'])
-        statisticsCalculate(dfDB, graphData)
+        if len(dfDocuments) == 0:
+            print("Collection %s empty" % (collectionName))
+            collectionsEmpty.append(collectionName)
+            continue
 
-        dfGraph = dfGraph.append(graphData, ignore_index = True)
-    
-        # textTreatment(df)
-        # normalized values
-        # df["minmax_norm"] = minmax_norm(df["statistics.actual.likeCount"])
+        # Add node attributes from csv
+        G.add_node(collectionName)
+        nx.set_node_attributes(G, {collectionName: {"retweetedUrl": row['retweeted_url']}})
+        nx.set_node_attributes(G, {collectionName: {"rph": row['RP(H)']}})
+        nx.set_node_attributes(G, {collectionName: {"retweetsCount": row['retweets_count']}})
+        nx.set_node_attributes(G, {collectionName: {"count": len(dfDocuments)}})
 
-    dfGraph.to_csv("collections/graph.csv", index=False)
-    print(dfGraph)
+        # Add node attributes from database
+        G = addNodeAttributes(G, collectionName, dfDocuments)
+        accounts[collectionName] = dfDocuments["account.id"].unique()
+
+        for collection in collectionsDone:
+            commonElements = list(set(accounts[collection]).intersection(accounts[collectionName]))
+
+            edgeWeight = len(commonElements)
+            if edgeWeight > 0:
+                G.add_edge(collectionName, collection)
+                nx.set_edge_attributes(G, {(collectionName, collection): {"weight": edgeWeight}})
+                # nx.set_edge_attributes(G, {(collectionName, collection): {"accounts": ",".join(str(v) for v in commonElements)}})
+
+        collectionsDone.append(collectionName)
+
+    # print("Nodes")
+    # print(G.nodes())
+    # print("Edges")
+    # print(G.edges())
+
+    nx.write_gml(G, "crowdtangle.gml")
+    print("Graph saved!")
+
+    print("Collections empty:")
+    print(collectionsEmpty)
 
 
 def textTreatment(df):
@@ -116,6 +109,23 @@ def textTreatment(df):
     print(tagged)
 
 
+def addNodeAttributes(G, collectionName, df):
+    platform = dict(df.groupby(["platform"])["platform"].count())
+    type = dict(df.groupby(["type"])["type"].count())
+
+    for k, v in platform.items():
+        platform[k] = float(v)
+
+    for k, v in type.items():
+        type[k] = float(v)
+
+    nx.set_node_attributes(G, {collectionName: {"platform": platform}})
+    nx.set_node_attributes(G, {collectionName: {"type": type}})
+    nx.set_node_attributes(G, {collectionName: {"meanSubscriberCount": round(df["subscriberCount"].mean(),2)}})
+    nx.set_node_attributes(G, {collectionName: {"meanScore": round(df["score"].mean(),2)}})
+
+    return G
+
 
 def statisticsCalculate(df, data):
     # General data
@@ -153,9 +163,6 @@ def statisticsCalculate(df, data):
     data['meanExpectedCare']        = round(df["statistics.expected.careCount"].mean(),2)
 
     pp.pprint("Count: %s" % (df.shape[0]))
-
-    pp.pprint()
-
 
     pp.pprint("Means:")
     pp.pprint("Score: %s" % (data['meanScore']))
@@ -198,12 +205,42 @@ def mongodbConnection(collectionName):
 
 
 def getDocuments(collectionName): # array of jsons [{},{}]
-    pp.pprint("Getting documents from: " + collectionName)
+    print("Getting documents from: " + collectionName)
     collection = mongodbConnection(collectionName)
 
     # https://pymongo.readthedocs.io/en/stable/tutorial.html
     # pp.pprint(collection.count_documents({}))
-    return collection.find({})
+    return collection.find({},{
+        'platform':1,
+        'type':1,
+        'subscriberCount':1,
+        'score':1,
+        'statistics.actual.likeCount':1,
+        'statistics.actual.shareCount':1,
+        'statistics.actual.commentCount':1,
+        'statistics.actual.loveCount':1,
+        'statistics.actual.wowCount':1,
+        'statistics.actual.hahaCount':1,
+        'statistics.actual.sadCount':1,
+        'statistics.actual.angryCount':1,
+        'statistics.actual.thankfulCount':1,
+        'statistics.actual.careCount':1,
+        'statistics.expected.likeCount':1,
+        'statistics.expected.shareCount':1,
+        'statistics.expected.commentCount':1,
+        'statistics.expected.loveCount':1,
+        'statistics.expected.wowCount':1,
+        'statistics.expected.hahaCount':1,
+        'statistics.expected.sadCount':1,
+        'statistics.expected.angryCount':1,
+        'statistics.expected.thankfulCount':1,
+        'statistics.expected.careCount':1,
+        'account.id':1,
+        'account.name':1,
+        'account.subscriberCount':1,
+        'account.accountType':1,
+        'account.url':1,
+    })
 
 
 if __name__ == "__main__":
