@@ -3,6 +3,8 @@ from pandas.core.frame import DataFrame
 from pymongo import MongoClient
 import pprint as pp
 import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
 from nltk import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
@@ -14,60 +16,9 @@ from nltk import pos_tag
 # insert more fields
 
 def main():
-    # collection_name,retweeted_url,RP(H),retweets_count
-    dfCsv = pd.read_csv('URLs/retweeted_urls_test.csv',nrows=50)
-
-    G=nx.Graph()
-    collectionsDone = []
-    collectionsEmpty = []
-    accounts = {}
-
-    # Nodes creation and their attributes
-    for index,row in dfCsv.iterrows():
-        # graphData = {}
-        collectionName = row['collection_name'].replace("_","")
-        print("\nCollectionName: "+ str(collectionName))
-
-        documents = getDocuments(row['collection_name'])
-        dfDocuments = pd.json_normalize(list(documents))
-
-        if len(dfDocuments) == 0:
-            print("Collection %s empty" % (collectionName))
-            collectionsEmpty.append(collectionName)
-            continue
-
-        # Add node attributes from csv
-        G.add_node(collectionName)
-        nx.set_node_attributes(G, {collectionName: {"retweetedUrl": row['retweeted_url']}})
-        nx.set_node_attributes(G, {collectionName: {"rph": row['RP(H)']}})
-        nx.set_node_attributes(G, {collectionName: {"retweetsCount": row['retweets_count']}})
-        nx.set_node_attributes(G, {collectionName: {"count": len(dfDocuments)}})
-
-        # Add node attributes from database
-        G = addNodeAttributes(G, collectionName, dfDocuments)
-        accounts[collectionName] = dfDocuments["account.id"].unique()
-
-        for collection in collectionsDone:
-            commonElements = list(set(accounts[collection]).intersection(accounts[collectionName]))
-
-            edgeWeight = len(commonElements)
-            if edgeWeight > 0:
-                G.add_edge(collectionName, collection)
-                nx.set_edge_attributes(G, {(collectionName, collection): {"weight": edgeWeight}})
-                # nx.set_edge_attributes(G, {(collectionName, collection): {"accounts": ",".join(str(v) for v in commonElements)}})
-
-        collectionsDone.append(collectionName)
-
-    # print("Nodes")
-    # print(G.nodes())
-    # print("Edges")
-    # print(G.edges())
-
-    nx.write_gml(G, "crowdtangle.gml")
-    print("Graph saved!")
-
-    print("Collections empty:")
-    print(collectionsEmpty)
+    checkCollections()
+    # createGraphNodesCollections()
+    # createGraphNodesAccounts()
 
 
 def textTreatment(df):
@@ -119,10 +70,12 @@ def addNodeAttributes(G, collectionName, df):
     for k, v in type.items():
         type[k] = float(v)
 
-    nx.set_node_attributes(G, {collectionName: {"platform": platform}})
-    nx.set_node_attributes(G, {collectionName: {"type": type}})
+    # nx.set_node_attributes(G, {collectionName: {"platform": platform}})
+    # nx.set_node_attributes(G, {collectionName: {"type": type}})
     nx.set_node_attributes(G, {collectionName: {"meanSubscriberCount": round(df["subscriberCount"].mean(),2)}})
     nx.set_node_attributes(G, {collectionName: {"meanScore": round(df["score"].mean(),2)}})
+    nx.set_node_attributes(G, {collectionName: {"medianSubscriberCount": round(df["subscriberCount"].median(),2)}})
+    nx.set_node_attributes(G, {collectionName: {"medianScore": round(df["score"].median(),2)}})
 
     return G
 
@@ -132,7 +85,7 @@ def statisticsCalculate(df, data):
     data['itemsCount']                     = len(df)
     data['platform']                       = dict(df.groupby(["platform"])["platform"].count())
     data['type']                           = dict(df.groupby(["type"])["type"].count())
-    data['accountType']                    = dict(df.groupby(["account.accountType"])["account.accountType"].count())
+    data['pageCategory']                   = dict(df.groupby(["account.pageCategory"])["account.pageCategory"].count())
     data['meanPostSubscriberCount']        = round(df["subscriberCount"].mean(),2)
     data['medianPostSubscriberCount']      = round(df["subscriberCount"].median(),2)
     data['meanAccountSubscriberCount']     = round(df['account.subscriberCount'].mean(),2)
@@ -238,9 +191,199 @@ def getDocuments(collectionName): # array of jsons [{},{}]
         'account.id':1,
         'account.name':1,
         'account.subscriberCount':1,
-        'account.accountType':1,
+        'account.pageCategory':1,
         'account.url':1,
     })
+
+
+def checkCollections():
+    dfCsv = pd.read_csv('URLs/retweeted_urls_rph_BRA.csv',nrows=10)
+    collections = {}
+
+    for index,row in dfCsv.iterrows():
+        # graphData = {}
+        collectionName = row['collection_name'].replace("_","")
+        print("\nCollectionName: "+ str(collectionName))
+
+        if collectionName in ["collection0002","collection0017"]:
+            continue
+
+        documents = getDocuments(row['collection_name'])
+        dfDocuments = pd.json_normalize(list(documents))
+        
+        collections[collectionName] = len(dfDocuments)
+
+    collections = {k: v for k, v in sorted(collections.items(), key=lambda item: item[1], reverse=True)}
+
+    print(collections)
+    myList = collections.items()
+    # myList = sorted(myList)
+    x, y = zip(*myList)
+    plt.plot(x, y)
+    plt.xlabel('Collections')
+    plt.ylabel('Documents Count')
+    plt.show()
+
+
+def createGraphNodesCollections():
+    dfCsv = pd.read_csv('URLs/retweeted_urls_test.csv',nrows=200)
+
+    G = nx.Graph()
+    collectionsDone = []
+    collectionsEmpty = []
+    accounts = {}
+
+    # TODO
+    # Create account as node and collections as edges
+
+    # Nodes initialization and their attributes, edge using related account ids cross news shares
+    for index,row in dfCsv.iterrows():
+        # graphData = {}
+        collectionName = row['collection_name'].replace("_","")
+        print("\nCollectionName: "+ str(collectionName))
+
+        # skip collections
+        # if collectionName in ["collection0002","collection0017"]:
+        #     continue
+
+        documents = getDocuments(row['collection_name'])
+        dfDocuments = pd.json_normalize(list(documents))
+
+        if len(dfDocuments) == 0:
+            print("Collection %s is empty" % (collectionName))
+            collectionsEmpty.append(collectionName)
+            continue
+
+        # Add node attributes from csv
+        G.add_node(collectionName)
+        nx.set_node_attributes(G, {collectionName: {"retweetedUrl": row['retweeted_url']}})
+        nx.set_node_attributes(G, {collectionName: {"rph": row['RP(H)']}})
+        nx.set_node_attributes(G, {collectionName: {"retweetsCount": row['retweets_count']}})
+        nx.set_node_attributes(G, {collectionName: {"documentsCount": len(dfDocuments)}})
+
+        # Add node attributes from database
+        G = addNodeAttributes(G, collectionName, dfDocuments)
+
+        accounts[collectionName] = dfDocuments["account.id"].unique()
+        
+        # Scores in range -10 +10 to clusterize
+        # 5-        red
+        # -4.9 -1.9 orange
+        # -2 +2     yellow
+        # 2.01 5    blue
+        # 5+        green
+        score = np.mean(dfDocuments["score"].unique())
+        print(score)
+        if score < -5:
+            color="red"
+        elif score < -2:
+            color="orange"
+        elif score <= 2:
+            color="yellow"
+        elif score < 5:
+            color="blue"
+        else:
+            color="green"
+
+        nx.set_node_attributes(G, {collectionName: {"color": color}})
+
+        for collection in collectionsDone:
+            commonElements = list(set(accounts[collection]).intersection(accounts[collectionName]))
+
+            edgeWeight = len(commonElements)
+            if edgeWeight > 0:
+                G.add_edge(collectionName, collection)
+                G.add_edge(collection, collectionName)
+                nx.set_edge_attributes(G, {(collectionName, collection): {"weight": edgeWeight}})
+                nx.set_edge_attributes(G, {(collection, collectionName): {"weight": edgeWeight}})
+                # nx.set_edge_attributes(G, {(collectionName, collection): {"accounts": ",".join(str(v) for v in commonElements)}})
+
+        collectionsDone.append(collectionName)
+
+    # print("Nodes")
+    # print(G.nodes())
+    # print("Edges")
+    # print(G.edges())
+
+    nx.write_gml(G, "crowdtangleCollections.gml")
+    print("Graph saved!")
+
+    print("Collections empty:")
+    for collectionEmpty in collectionsEmpty:
+        print(collectionEmpty)
+
+
+
+def createGraphNodesAccounts():
+    dfCsv = pd.read_csv('URLs/retweeted_urls_test.csv',nrows=200)
+
+    G = nx.Graph()
+    collectionsDone = []
+    collectionsEmpty = []
+    accounts = {}
+    allPageIds = []
+
+    # Create account as node and collections as edges
+    for index,row in dfCsv.iterrows():
+        # graphData = {}
+        collectionName = row['collection_name'].replace("_","")
+        print("\nCollectionName: "+ str(collectionName))
+
+        # skip collections
+        if collectionName in ["collection0002","collection0017"]:
+            continue
+
+        documents = getDocuments(row['collection_name'])
+        dfDocuments = pd.json_normalize(list(documents))
+
+        if len(dfDocuments) == 0:
+            print("Collection %s is empty" % (collectionName))
+            collectionsEmpty.append(collectionName)
+            continue
+
+        pageId = dfDocuments["account.id"].unique()
+        # pageToInsert = allPageIds - pageId
+        pageToInsert = list(set(allPageIds) - set(pageId))
+        print(pageToInsert)
+
+        for item in pageToInsert:
+            G.add_node(item)
+
+        allPageIds.append(pageId)
+        
+        # Add node attributes from csv
+        # nx.set_node_attributes(G, {collectionName: {"retweetedUrl": row['retweeted_url']}})
+        # nx.set_node_attributes(G, {collectionName: {"rph": row['RP(H)']}})
+        # nx.set_node_attributes(G, {collectionName: {"retweetsCount": row['retweets_count']}})
+        # nx.set_node_attributes(G, {collectionName: {"documentsCount": len(dfDocuments)}})
+
+        # Add node attributes from database
+        # G = addNodeAttributes(G, collectionName, dfDocuments)
+
+        # for collection in collectionsDone:
+        #     commonElements = list(set(accounts[collection]).intersection(accounts[collectionName]))
+
+        #     edgeWeight = len(commonElements)
+        #     if edgeWeight > 0:
+        #         G.add_edge(collectionName, collection)
+        #         G.add_edge(collection, collectionName)
+        #         nx.set_edge_attributes(G, {(collectionName, collection): {"weight": edgeWeight}})
+        #         nx.set_edge_attributes(G, {(collection, collectionName): {"weight": edgeWeight}})
+        #         # nx.set_edge_attributes(G, {(collectionName, collection): {"accounts": ",".join(str(v) for v in commonElements)}})
+
+        # collectionsDone.append(collectionName)
+
+    # print("Nodes")
+    # print(G.nodes())
+    # print("Edges")
+    # print(G.edges())
+
+    nx.write_gml(G, "crowdtangleAccounts.gml")
+    print("Graph saved!")
+
+    print("Collections empty:")
+    for collectionEmpty in collectionsEmpty:
+        print(collectionEmpty)
 
 
 if __name__ == "__main__":
