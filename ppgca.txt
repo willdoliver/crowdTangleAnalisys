@@ -1,0 +1,62 @@
+CrowdTangle
+    API Token
+        D9nOZXN91DGav7AkNGu26Bs5CTHciYLEpbEIf0wH
+
+    API usage
+        https://vimeo.com/453763307
+
+    API tips
+        https://help.crowdtangle.com/en/articles/3443476-api-cheat-sheet
+
+    Dashboards:
+        https://apps.crowdtangle.com/will2021/lists/pages
+
+    Codebook
+
+---------------------------------------------------------
+
+Dados do waze, vitória ES
+base de alertas
+
+Tipos e recorrencia dos alertas, quais regioes
+
+---------------------------------------------------------
+
+Characterizing Reactions and Comments Associated with News on Facebook
+Autor: Samuel S. Guimarães (Universidade Federal de Minas Gerais)
+Orientador: Fabrício Benevenuto (Universidade Federal de Minas Gerais)
+Link: https://sol.sbc.org.br/index.php/sbsi_estendido/article/view/15370/15213
+
+Dissertação Diego
+Link: https://repositorio.utfpr.edu.br/jspui/handle/1/4936
+
+AGRUPAMENTO AUTOMÁTICO DE NOTÍCIASDE JORNAIS ON-LINEUSANDO TÉCNICAS DE MACHINE LEARNINGPARA CLUSTERINGDE TEXTOS NO IDIOMA PORTUGUÊS
+https://periodicos.ufmg.br/index.php/moci/article/view/19170/16237
+
+Why Facebook Reactions are good news for evaluating social media campaigns
+https://link.springer.com/content/pdf/10.1057/dddmp.2015.56.pdf
+
+Análise de reacts e comentários em postagens (direita, esquerda)
+    Recuperar id dos usuários que dão reactions
+
+    url de noticia g1,uol
+        (https://g1.globo.com/politica/noticia/2021/06/23/plenario-do-stf-reconhece-decisao-da-segunda-turma-que-declarou-moro-parcial-ao-condenar-lula.ghtml)
+
+    Conteudo da noticia, montar tematica dela
+        Aplicar técnicas de PLN
+            Remover stopwords
+            Stemming (Padronização de verbos)
+            classificar em tópicos/clusters
+
+    montar uma rede, grafo
+
+Estudo dirigido
+    Inicialmente CT,
+    Extração de tópicos,
+    Como trabalhar com redes,
+    Redes complexas,
+
+---------------------------------------------------------
+
+Facebook API: https://developers.facebook.com/apps/416995199246874/app-review/permissions/
+
