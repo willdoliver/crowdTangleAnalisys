@@ -60,3 +60,7 @@ Estudo dirigido
 
 Facebook API: https://developers.facebook.com/apps/416995199246874/app-review/permissions/
 
+Update script in server
+scp -r /var/www/PPGCA/crowdTangleAnalisys/readData.py william@ppgca-server:projects/crowdtangle
+
+scp william@ppgca-server:projects/crowdtangle/collectionsHistogram.png /var/www/PPGCA/crowdTangleAnalisys

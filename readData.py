@@ -5,16 +5,15 @@ import pprint as pp
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
-from nltk import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer
-from nltk import pos_tag
-
+# from nltk import word_tokenize, sent_tokenize
+# from nltk.corpus import stopwords
+# from nltk.stem import PorterStemmer
+# from nltk import pos_tag
 
 def main():
     collections = checkCollections()
     createGraphNodesCollections(collections)
-    createGraphNodesAccounts()
+    # createGraphNodesAccounts(collections)
 
 class startProj():
     def textTreatment(df):
@@ -56,7 +55,7 @@ class startProj():
         print(tagged)
 
 
-    def addNodeAttributes(G, collectionName, df):
+    def addNodeAttributes(self, G, collectionName, df):
         platform = dict(df.groupby(["platform"])["platform"].count())
         type = dict(df.groupby(["type"])["type"].count())
 
@@ -142,7 +141,7 @@ class startProj():
         return (df_input - df_input.min()) / ( df_input.max() - df_input.min())
 
 
-    def mongodbConnection(collectionName):
+    def mongodbConnection(self, collectionName):
         # sudo service mongod status
         if collectionName == None:
             print("CollectionName Error")
@@ -172,7 +171,7 @@ class startProj():
         })
 
 
-    def getDocumentsCollection(collectionName): # array of jsons [{},{}]
+    def getDocumentsCollection(self, collectionName): # array of jsons [{},{}]
         print("Getting documents from: " + collectionName)
         collection = startproj.mongodbConnection(collectionName)
 
@@ -216,17 +215,29 @@ def checkCollections():
     collections = {}
     outGraph = {}
     totalDocuments = 0
+    collectionsFiltered = [ # not about specific news
+        "collection_0014",
+        "collection_0032",
+        "collection_0287",
+        "collection_0581",
+        "collection_0623",
+        "collection_0761",
+        "collection_0855",
+        "collection_1378",
+        "collection_1989",
+        "collection_2008",
+        "collection_2012"
+    ]
 
     for index,row in dfCsv.iterrows():
+        if row['collection_name'] in collectionsFiltered:
+            continue
+        
         collectionName = row['collection_name'].replace("_","")
-        # print("\nCollectionName: "+ str(collectionName))
-        # if collectionName in ["collection0002","collection0017"]:
-        #     continue
 
         qtdDocuments = startproj.countDocuments(row['collection_name'])
 
-        # Top 5 collections are too big
-        if qtdDocuments <= 20 or qtdDocuments > 1000:
+        if qtdDocuments <= 10 or qtdDocuments > 1000:
             if qtdDocuments > 1000:
                 outGraph[collectionName] = qtdDocuments
             continue
@@ -246,7 +257,7 @@ def checkCollections():
     plt.plot(x, y)
     plt.xlabel('Collections')
     plt.ylabel('Documents Count')
-    plt.show()
+    plt.savefig("collectionsHistogram.png")
 
     print("Collections out of graph:")
     outGraph = {k: v for k, v in sorted(outGraph.items(), key=lambda item: item[1], reverse=True)}
@@ -269,16 +280,12 @@ def createGraphNodesCollections(collections):
     collectionsDone = []
     collectionsEmpty = []
     accounts = {}
-    edgeCutValue = 10
+    edgeCutValue = 2
 
     # Nodes initialization and their attributes, edge using related account ids cross news shares
     for index,row in dfCsv.iterrows():
         collectionName = row['collection_name'].replace("_","")
         print("\nCollectionName: "+ str(collectionName))
-
-        # skip collections
-        # if collectionName in ["collection0002","collection0017"]:
-        #     continue
 
         # Collections filtered above
         if collectionName not in collections:
@@ -298,7 +305,7 @@ def createGraphNodesCollections(collections):
         nx.set_node_attributes(G, {collectionName: {"documentsCount": len(dfDocuments)}})
 
         # Add node attributes from database
-        G = startproj.addNodeAttributes(G, collectionName, dfDocuments)
+        # G = startproj.addNodeAttributes(G, collectionName, dfDocuments)
 
         accounts[collectionName] = dfDocuments["account.id"].unique()
         
@@ -314,7 +321,18 @@ def createGraphNodesCollections(collections):
         reactionCountActual = None
         reactionCountExpected = None
 
-        reactionCountActual = (dfDocuments["statistics.actual.likeCount"] - dfDocuments["statistics.actual.angryCount"]) / (
+        # Positive reactions: like, love, wow, haha, thankful, care
+        # Negative reactions: sad, angry
+        reactionCountActual = ((
+                dfDocuments["statistics.actual.likeCount"] +
+                dfDocuments["statistics.actual.loveCount"] +
+                dfDocuments["statistics.actual.wowCount"] +
+                dfDocuments["statistics.actual.hahaCount"] +
+                dfDocuments["statistics.actual.thankfulCount"] +
+                dfDocuments["statistics.actual.careCount"]) -
+                (dfDocuments["statistics.actual.sadCount"] +
+                dfDocuments["statistics.actual.angryCount"]
+            )) / (
                 dfDocuments["statistics.actual.likeCount"] + 
                 dfDocuments["statistics.actual.loveCount"] +  
                 dfDocuments["statistics.actual.wowCount"] +  
@@ -325,14 +343,23 @@ def createGraphNodesCollections(collections):
                 dfDocuments["statistics.actual.careCount"]
             )
 
-        reactionCountExpected = (dfDocuments["statistics.expected.likeCount"] - dfDocuments["statistics.expected.angryCount"]) / (
-                dfDocuments["statistics.expected.likeCount"] + 
-                dfDocuments["statistics.expected.loveCount"] +  
-                dfDocuments["statistics.expected.wowCount"] +  
-                dfDocuments["statistics.expected.hahaCount"] +  
-                dfDocuments["statistics.expected.sadCount"] +  
-                dfDocuments["statistics.expected.angryCount"] +  
-                dfDocuments["statistics.expected.thankfulCount"] +  
+        reactionCountExpected = ((
+                dfDocuments["statistics.expected.likeCount"] +
+                dfDocuments["statistics.expected.loveCount"] +
+                dfDocuments["statistics.expected.wowCount"] +
+                dfDocuments["statistics.expected.hahaCount"] +
+                dfDocuments["statistics.expected.thankfulCount"] +
+                dfDocuments["statistics.expected.careCount"]) -
+                (dfDocuments["statistics.expected.sadCount"] +
+                dfDocuments["statistics.expected.angryCount"]
+            )) / (
+                dfDocuments["statistics.expected.likeCount"] +
+                dfDocuments["statistics.expected.loveCount"] +
+                dfDocuments["statistics.expected.wowCount"] +
+                dfDocuments["statistics.expected.hahaCount"] +
+                dfDocuments["statistics.expected.sadCount"] +
+                dfDocuments["statistics.expected.angryCount"] +
+                dfDocuments["statistics.expected.thankfulCount"] +
                 dfDocuments["statistics.expected.careCount"]
             )
 
@@ -347,12 +374,12 @@ def createGraphNodesCollections(collections):
 
         reactionScore = reactionCountExpected/reactionCountActual
 
-        if reactionScore < 0.5:
-            reactionScoreText = "Negativa"
-        elif reactionScore <= 0.5:
+        if reactionScore > 0.5:
+            reactionScoreText = "Positiva"
+        elif reactionScore >= -0.5:
             reactionScoreText = "Neutra"
         else:
-            reactionScoreText = "Positiva"
+            reactionScoreText = "Negativa"
 
         nx.set_node_attributes(G, {collectionName: {"reactionCountActual": reactionCountActual}})
         nx.set_node_attributes(G, {collectionName: {"reactionCountExpected": reactionCountExpected}})
@@ -378,7 +405,7 @@ def createGraphNodesCollections(collections):
         print(collectionEmpty)
 
 
-def createGraphNodesAccounts():
+def createGraphNodesAccounts(collections):
     # Account as node
     dfCsv = pd.read_csv('URLs/retweeted_urls_rph_BRA.csv')
 
@@ -387,7 +414,6 @@ def createGraphNodesAccounts():
     collectionsEmpty = []
     accounts = {}
     pageIds = {}
-    collectionMinDocs = 10
 
     # Create account as node and collections as edges
     for index,row in dfCsv.iterrows():
@@ -395,11 +421,7 @@ def createGraphNodesAccounts():
         collectionName = row['collection_name'].replace("_","")
         print("\nCollectionName: "+ str(collectionName))
 
-        # skip collections
-        # if collectionName in ["collection0002","collection0017","collection2012","collection1378","collection2304"]:
-        #     continue
-
-        if startproj.countDocuments(row['collection_name']) <= collectionMinDocs:
+        if collectionName not in collections:
             print("Collection %s with insufficent length" % (collectionName))
             collectionsEmpty.append(collectionName)
             continue
@@ -440,7 +462,7 @@ def createGraphNodesAccounts():
         # Create edges between accounts
         for pageIdOrig in pageIds:
             for pageIdDest in pageIds:
-                print(pageIdOrig, pageIdDest)
+                # print(pageIdOrig, pageIdDest)
                 if pageIdOrig < pageIdDest: # include (pageIdOrig == pageIdDest)
                     edgeWeight = G.get_edge_data(pageIdOrig, pageIdDest, default=0)
                     # print("edgeWeight: %s" % edgeWeight)
@@ -451,9 +473,12 @@ def createGraphNodesAccounts():
                         nx.set_edge_attributes(G, {(pageIdOrig, pageIdDest): {"weight": 1}})
 
 
-    print("Collections empty:")
+    print("Collections not included:")
     for collectionEmpty in collectionsEmpty:
         print(collectionEmpty)
+
+    nx.write_gml(G, "crowdtangleAccounts.gml")
+    print("Graph saved!")
 
 if __name__ == "__main__":
     startproj = startProj()
