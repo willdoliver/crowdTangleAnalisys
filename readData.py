@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 
 def main():
     collections = checkCollections()
-    createGraphNodesCollections(collections)
-    # createGraphNodesAccounts(collections)
+    # createGraphNodesCollections(collections)
+    createGraphNodesAccounts(collections)
 
 class startProj():
     def textTreatment(df):
@@ -278,7 +278,7 @@ def createGraphNodesCollections(collections):
 
     G = nx.Graph()
     collectionsDone = []
-    collectionsEmpty = []
+    collectionsFiltered = []
     accounts = {}
     edgeCutValue = 2
 
@@ -290,7 +290,7 @@ def createGraphNodesCollections(collections):
         # Collections filtered above
         if collectionName not in collections:
             print("Collection %s with insufficent length" % (collectionName))
-            collectionsEmpty.append(collectionName)
+            collectionsFiltered.append(collectionName)
             continue
 
         documents = startproj.getDocumentsCollection(row['collection_name'])
@@ -400,9 +400,9 @@ def createGraphNodesCollections(collections):
     nx.write_gml(G, "crowdtangleCollections.gml")
     print("Graph saved!")
 
-    print("Collections empty:")
-    for collectionEmpty in collectionsEmpty:
-        print(collectionEmpty)
+    print("Used collections: %s" % (len(collections)))
+    print("Collections filtered: %s" % (len(collectionsFiltered)))
+    print("Filtered percentage: %s" % ( (len(collectionsFiltered) * 100) / len(collections) ))
 
 
 def createGraphNodesAccounts(collections):
@@ -411,7 +411,7 @@ def createGraphNodesAccounts(collections):
 
     G = nx.Graph()
     accountsDone = []
-    collectionsEmpty = []
+    collectionsFiltered = []
     accounts = {}
     pageIds = {}
 
@@ -423,7 +423,7 @@ def createGraphNodesAccounts(collections):
 
         if collectionName not in collections:
             print("Collection %s with insufficent length" % (collectionName))
-            collectionsEmpty.append(collectionName)
+            collectionsFiltered.append(collectionName)
             continue
 
         documents = startproj.getDocumentsAccount(row['collection_name'])
@@ -473,9 +473,9 @@ def createGraphNodesAccounts(collections):
                         nx.set_edge_attributes(G, {(pageIdOrig, pageIdDest): {"weight": 1}})
 
 
-    print("Collections not included:")
-    for collectionEmpty in collectionsEmpty:
-        print(collectionEmpty)
+    print("Used collections: %s" % (len(collections)))
+    print("Collections filtered: %s" % (len(collectionsFiltered)))
+    print("Filtered percentage: %s" % ( (len(collectionsFiltered) * 100) / len(collections) ))
 
     nx.write_gml(G, "crowdtangleAccounts.gml")
     print("Graph saved!")
