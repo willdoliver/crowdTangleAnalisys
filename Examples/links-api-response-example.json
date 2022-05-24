@@ -1,0 +1,70 @@
+{
+    "platformId" : "1584793948440088_2468424023410405",
+    "platform" : "Facebook",
+    "date" : "2020-01-21 16:58:43",
+    "updated" : "2021-10-23 05:56:26",
+    "type" : "link",
+    "title" : "New York Times faz editorial sobre \"escolha triste do Brasil\" por Bolsonaro",
+    "caption" : "noticias.uol.com.br",
+    "description" : "O jornal americano The New York Times, um dos principais veículos de comunicação do mundo, publicou editorial neste domingo (21) em que considera a possíve...",
+    "expandedLinks" : [ 
+        {
+            "original" : "https://noticias.uol.com.br/politica/eleicoes/2018/noticias/2018/10/21/editorial-new-york-times-bolsonaro-escolha-triste-do-brasil.htm?fbclid=IwAR20emMG5F_1-9fjptR3NncL7C4_UoqtBVfwFkk6wvl0Rxev44XGNxqJpSo",
+            "expanded" : "https://noticias.uol.com.br/politica/eleicoes/2018/noticias/2018/10/21/editorial-new-york-times-bolsonaro-escolha-triste-do-brasil.htm?fbclid=IwAR20emMG5F_1-9fjptR3NncL7C4_UoqtBVfwFkk6wvl0Rxev44XGNxqJpSo"
+        }
+    ],
+    "link" : "https://noticias.uol.com.br/politica/eleicoes/2018/noticias/2018/10/21/editorial-new-york-times-bolsonaro-escolha-triste-do-brasil.htm?fbclid=IwAR20emMG5F_1-9fjptR3NncL7C4_UoqtBVfwFkk6wvl0Rxev44XGNxqJpSo",
+    "postUrl" : "https://www.facebook.com/groups/1584793948440088/permalink/2468424023410405",
+    "subscriberCount" : 0,
+    "score" : -0.833333333333333,
+    "media" : [ 
+        {
+            "type" : "photo",
+            "url" : "https://external-sea1-1.xx.fbcdn.net/safe_image.php?d=AQE3tMVXWLv162r9&w=500&h=500&url=https%3A%2F%2Fconteudo.imguol.com.br%2Fc%2Fnoticias%2F73%2F2018%2F10%2F19%2F17out2018---o-candidato-jair-bolsonaro-em-visita-a-policia-federal-1539972277696_956x500.jpg&cfs=1&sx=228&sy=0&sw=500&sh=500&ext=emg0&_nc_oe=6ee78&_nc_sid=632586&ccb=3-5&_nc_hash=AQFgUrVY9eoTLGRP",
+            "height" : 500,
+            "width" : 500,
+            "full" : "https://external-sea1-1.xx.fbcdn.net/safe_image.php?d=AQFjng6yN7KY9QMe&url=https%3A%2F%2Fconteudo.imguol.com.br%2Fc%2Fnoticias%2F73%2F2018%2F10%2F19%2F17out2018---o-candidato-jair-bolsonaro-em-visita-a-policia-federal-1539972277696_956x500.jpg&ext=emg0&_nc_oe=6ee78&_nc_sid=64c8fc&ccb=3-5&_nc_hash=AQFCpG3tVNKqeN6-"
+        }
+    ],
+    "statistics" : {
+        "actual" : {
+            "likeCount" : 0,
+            "shareCount" : 0,
+            "commentCount" : 3,
+            "loveCount" : 0,
+            "wowCount" : 0,
+            "hahaCount" : 0,
+            "sadCount" : 0,
+            "angryCount" : 0,
+            "thankfulCount" : 0,
+            "careCount" : 0
+        },
+        "expected" : {
+            "likeCount" : 2,
+            "shareCount" : 6,
+            "commentCount" : 3,
+            "loveCount" : 2,
+            "wowCount" : 3,
+            "hahaCount" : 1,
+            "sadCount" : 0,
+            "angryCount" : 0,
+            "thankfulCount" : 0,
+            "careCount" : 1
+        }
+    },
+    "account" : {
+        "id" : 12889510,
+        "name" : "Grupos Do Whatsapp",
+        "profileImage" : "https://static.xx.fbcdn.net/rsrc.php/v3/y3/r/0PnClccPFXs.png",
+        "subscriberCount" : 28105,
+        "url" : "https://www.facebook.com/groups/1584793948440088",
+        "platform" : "Facebook",
+        "platformId" : "1584793948440088",
+        "accountType" : "facebook_group",
+        "pageCategory" : "none",
+        "verified" : false
+    },
+    "languageCode" : "und",
+    "legacyId" : 0,
+    "id" : "12889510|2468424023410405"
+}

@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 
 def main():
     collections = checkCollections()
-    # createGraphNodesCollections(collections)
-    createGraphNodesAccounts(collections)
+    createGraphNodesCollections(collections)
+    # createGraphNodesAccounts(collections)
 
 class startProj():
     def textTreatment(df):
@@ -397,7 +397,7 @@ def createGraphNodesCollections(collections):
 
         collectionsDone.append(collectionName)
 
-    nx.write_gml(G, "crowdtangleCollections.gml")
+    nx.write_gml(G, "Graphs/crowdtangleCollections.gml")
     print("Graph saved!")
 
     print("Used collections: %s" % (len(collections)))
@@ -477,7 +477,7 @@ def createGraphNodesAccounts(collections):
     print("Collections filtered: %s" % (len(collectionsFiltered)))
     print("Filtered percentage: %s" % ( (len(collectionsFiltered) * 100) / len(collections) ))
 
-    nx.write_gml(G, "crowdtangleAccounts.gml")
+    nx.write_gml(G, "Graphs/crowdtangleAccounts.gml")
     print("Graph saved!")
 
 if __name__ == "__main__":
